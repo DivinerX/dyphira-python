@@ -7,7 +7,7 @@ class OpenAI:
     # self.base_url = "http://localhost:8000/api/v1/proxy/openai"
     self.headers = {
       "Content-Type": "application/json",
-      "Authorization": f"Bearer {self.api_key}"
+      "apikey": f"{self.api_key}"
     }
 
   def _request(self, method, endpoint, json=None, data=None, files=None, params=None):
