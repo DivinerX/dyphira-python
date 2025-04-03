@@ -1,10 +1,10 @@
 import requests
+import os
 
 class OpenAI:
   def __init__(self, api_key):
     self.api_key = api_key
     self.base_url = "https://novus-server-v3.fly.dev/api/v1/proxy/openai"
-    # self.base_url = "http://localhost:8000/api/v1/proxy/openai"
     self.headers = {
       "Content-Type": "application/json",
       "apikey": f"{self.api_key}"
@@ -36,19 +36,14 @@ class OpenAI:
         return {"error": f"Failed to decode JSON response. Status code: {response.status_code}", "text": response.text}
 
   # Chat and Completions
-  def responses(self, model, prompt, temperature=1.0, max_tokens=100, top_p=1.0, frequency_penalty=0.0, presence_penalty=0.0):
+  def responses(self, model, input, temperature=1.0):
     """Generate responses from the OpenAI API via Dyphira."""
     return self._request(
       "POST",
       "responses",
       json={
         "model": model,
-        "prompt": prompt,
-        "temperature": temperature,
-        "max_tokens": max_tokens,
-        "top_p": top_p,
-        "frequency_penalty": frequency_penalty,
-        "presence_penalty": presence_penalty
+        "input": input
       }
     )
     
@@ -103,28 +98,38 @@ class OpenAI:
     )
   
   def images_edits(self, image, mask=None, prompt="", n=1, size="1024x1024"):
-    """Edit images using DALL-E 2."""
-    files = {"image": open(image, "rb")}
-    if mask:
-      files["mask"] = open(mask, "rb")
-    
+    """Edit images using DALL-E models."""
+    files = {}
     data = {
       "prompt": prompt,
       "n": n,
       "size": size
     }
     
-    return self._request("POST", "images/edits", files=files, data=data)
+    # Open files only when making the request
+    with open(image, "rb") as img_file:
+      files["image"] = (os.path.basename(image), img_file.read(), "image/jpeg")
+      
+      if mask:
+        with open(mask, "rb") as mask_file:
+          files["mask"] = (os.path.basename(mask), mask_file.read(), "image/jpeg")
+      
+      return self._request("POST", "images/edits", files=files, data=data)
   
   def images_variations(self, image, n=1, size="1024x1024"):
     """Create variations of an image using DALL-E 2."""
-    files = {"image": open(image, "rb")}
+    # Fix: Use with statement to properly handle file opening/closing
+    files = {}
     data = {
       "n": n,
       "size": size
     }
     
-    return self._request("POST", "images/variations", files=files, data=data)
+    # Open files only when making the request
+    with open(image, "rb") as img_file:
+      files["image"] = (os.path.basename(image), img_file.read(), "image/jpeg")
+      
+      return self._request("POST", "images/variations", files=files, data=data)
 
   # Embeddings
   def embeddings(self, model, input):
