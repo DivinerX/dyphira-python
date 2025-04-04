@@ -4,8 +4,8 @@ import os
 class OpenAI:
   def __init__(self, api_key):
     self.api_key = api_key
-    # self.base_url = "https://novus-server-v3.fly.dev/api/v1/proxy/openai"
-    self.base_url = "http://103.54.57.253:8000/api/v1/proxy/openai"
+    self.base_url = "https://novus-server-v3.fly.dev/api/v1/proxy/openai"
+    # self.base_url = "http://103.54.57.253:8000/api/v1/proxy/openai"
     self.headers = {
       "Content-Type": "application/json",
       "apikey": f"{self.api_key}"
