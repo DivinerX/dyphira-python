@@ -11,6 +11,13 @@ class OpenAI:
       "apikey": f"{self.api_key}"
     }
 
+  def _ensure_absolute_path(self, path):
+    """Convert relative path to absolute path if needed."""
+    if not os.path.isabs(path):
+      # If it's a relative path, make it absolute based on current working directory
+      return os.path.abspath(path)
+    return path
+
   def _request(self, method, endpoint, json=None, data=None, files=None, params=None, headers=None):
     """Helper method to make requests to the API"""
     url = f"{self.base_url}/{endpoint}"
@@ -110,11 +117,15 @@ class OpenAI:
       "size": size
     }
     
+    # Convert to absolute path if needed
+    image = self._ensure_absolute_path(image)
+    
     # Open files only when making the request
     with open(image, "rb") as img_file:
       files["image"] = (os.path.basename(image), img_file.read())
       
       if mask:
+        mask = self._ensure_absolute_path(mask)
         with open(mask, "rb") as mask_file:
           files["mask"] = (os.path.basename(mask), mask_file.read())
       
@@ -127,6 +138,9 @@ class OpenAI:
       "n": n,
       "size": size
     }
+    
+    # Convert to absolute path if needed
+    image = self._ensure_absolute_path(image)
     
     # Open files only when making the request
     with open(image, "rb") as img_file:
@@ -149,10 +163,8 @@ class OpenAI:
   # Audio
   def audio_transcriptions(self, file, model="whisper-1", language=None, prompt=None):
     """Transcribe audio to text."""
-    # Open the file directly in the files dictionary
-    files = {
-      "file": open(file, "rb")
-    }
+    # Convert to absolute path if needed
+    file = self._ensure_absolute_path(file)
     
     # Create a dictionary for form data
     data = {"model": model}
@@ -162,23 +174,33 @@ class OpenAI:
     if prompt:
       data["prompt"] = prompt
     
-    # Make the request with both data and files
-    response = self._request("POST", "audio/transcriptions", files=files, data=data)
-    
-    # Close the file after the request
-    files["file"].close()
-    
-    return response
+    # Open the file and create the files dictionary
+    with open(file, "rb") as f:
+      files = {
+        "file": (os.path.basename(file), f.read(), "audio/mpeg")
+      }
+      
+      # Make the request with both data and files
+      return self._request("POST", "audio/transcriptions", files=files, data=data)
   
   def audio_translations(self, file, model="whisper-1", prompt=None):
     """Translate audio to English text."""
-    files = {"file": open(file, "rb")}
-    data = {"model": model}
+    # Convert to absolute path if needed
+    file = self._ensure_absolute_path(file)
     
-    if prompt:
-      data["prompt"] = prompt
+    # Open the file and create the files dictionary
+    with open(file, "rb") as f:
+      files = {
+        "file": (os.path.basename(file), f.read(), "audio/mpeg")
+      }
       
-    return self._request("POST", "audio/translations", files=files, data=data)
+      data = {"model": model}
+      
+      if prompt:
+        data["prompt"] = prompt
+        
+      # Make the request with both data and files
+      return self._request("POST", "audio/translations", files=files, data=data)
   
   def audio_speech(self, model, input, voice, response_format="mp3", speed=1.0):
     """Generate speech from text."""
@@ -201,10 +223,17 @@ class OpenAI:
   
   def files_upload(self, file, purpose):
     """Upload a file for use with other endpoints."""
-    files = {"file": open(file, "rb")}
-    data = {"purpose": purpose}
+    # Convert to absolute path if needed
+    file = self._ensure_absolute_path(file)
     
-    return self._request("POST", "files", files=files, data=data)
+    # Open the file and create the files dictionary
+    with open(file, "rb") as f:
+      files = {
+        "file": (os.path.basename(file), f.read())
+      }
+      data = {"purpose": purpose}
+      
+      return self._request("POST", "files", files=files, data=data)
   
   def files_delete(self, file_id):
     """Delete a file."""
