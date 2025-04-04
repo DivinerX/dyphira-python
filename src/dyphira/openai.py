@@ -4,25 +4,29 @@ import os
 class OpenAI:
   def __init__(self, api_key):
     self.api_key = api_key
-    self.base_url = "https://novus-server-v3.fly.dev/api/v1/proxy/openai"
+    # self.base_url = "https://novus-server-v3.fly.dev/api/v1/proxy/openai"
+    self.base_url = "http://103.54.57.253:8000/api/v1/proxy/openai"
     self.headers = {
       "Content-Type": "application/json",
       "apikey": f"{self.api_key}"
     }
 
-  def _request(self, method, endpoint, json=None, data=None, files=None, params=None):
+  def _request(self, method, endpoint, json=None, data=None, files=None, params=None, headers=None):
     """Helper method to make requests to the API"""
     url = f"{self.base_url}/{endpoint}"
-    headers = self.headers.copy()
+    request_headers = self.headers.copy()
+    
+    if headers:
+      request_headers.update(headers)
     
     if files:
       # Don't set Content-Type for multipart/form-data
-      headers.pop("Content-Type", None)
+      request_headers.pop("Content-Type", None)
     
     response = requests.request(
       method=method,
       url=url,
-      headers=headers,
+      headers=request_headers,
       json=json,
       data=data,
       files=files,
@@ -108,17 +112,16 @@ class OpenAI:
     
     # Open files only when making the request
     with open(image, "rb") as img_file:
-      files["image"] = (os.path.basename(image), img_file.read(), "image/jpeg")
+      files["image"] = (os.path.basename(image), img_file.read())
       
       if mask:
         with open(mask, "rb") as mask_file:
-          files["mask"] = (os.path.basename(mask), mask_file.read(), "image/jpeg")
+          files["mask"] = (os.path.basename(mask), mask_file.read())
       
       return self._request("POST", "images/edits", files=files, data=data)
   
   def images_variations(self, image, n=1, size="1024x1024"):
     """Create variations of an image using DALL-E 2."""
-    # Fix: Use with statement to properly handle file opening/closing
     files = {}
     data = {
       "n": n,
@@ -127,7 +130,7 @@ class OpenAI:
     
     # Open files only when making the request
     with open(image, "rb") as img_file:
-      files["image"] = (os.path.basename(image), img_file.read(), "image/jpeg")
+      files["image"] = (os.path.basename(image), img_file.read())
       
       return self._request("POST", "images/variations", files=files, data=data)
 
@@ -146,15 +149,26 @@ class OpenAI:
   # Audio
   def audio_transcriptions(self, file, model="whisper-1", language=None, prompt=None):
     """Transcribe audio to text."""
-    files = {"file": open(file, "rb")}
+    # Open the file directly in the files dictionary
+    files = {
+      "file": open(file, "rb")
+    }
+    
+    # Create a dictionary for form data
     data = {"model": model}
     
     if language:
       data["language"] = language
     if prompt:
       data["prompt"] = prompt
-      
-    return self._request("POST", "audio/transcriptions", files=files, data=data)
+    
+    # Make the request with both data and files
+    response = self._request("POST", "audio/transcriptions", files=files, data=data)
+    
+    # Close the file after the request
+    files["file"].close()
+    
+    return response
   
   def audio_translations(self, file, model="whisper-1", prompt=None):
     """Translate audio to English text."""
@@ -183,7 +197,7 @@ class OpenAI:
   # Files
   def files_list(self):
     """List files that have been uploaded."""
-    return self._request("GET", "files")
+    return self._request("GET", "files", json=None, data=None, files=None)
   
   def files_upload(self, file, purpose):
     """Upload a file for use with other endpoints."""
@@ -198,7 +212,7 @@ class OpenAI:
   
   def files_retrieve(self, file_id):
     """Retrieve information about a file."""
-    return self._request("GET", f"files/{file_id}")
+    return self._request("GET", f"files/{file_id}", json=None, data=None, files=None)
   
   def files_content(self, file_id):
     """Retrieve the contents of a file."""
@@ -260,12 +274,17 @@ class OpenAI:
       payload["instructions"] = instructions
     if tools:
       payload["tools"] = tools
-      
-    return self._request("POST", "assistants", json=payload)
+    
+    # Add the OpenAI-Beta header
+    headers = self.headers.copy()
+    headers["OpenAI-Beta"] = "assistants=v2"
+    
+    return self._request("POST", "assistants", json=payload, headers=headers)
   
   def assistants_retrieve(self, assistant_id):
     """Retrieve an assistant."""
-    return self._request("GET", f"assistants/{assistant_id}")
+    headers = {"OpenAI-Beta": "assistants=v2"}
+    return self._request("GET", f"assistants/{assistant_id}", headers=headers)
   
   def assistants_modify(self, assistant_id, model=None, name=None, description=None, instructions=None, tools=None):
     """Modify an assistant."""
@@ -281,13 +300,16 @@ class OpenAI:
       payload["instructions"] = instructions
     if tools:
       payload["tools"] = tools
-      
-    return self._request("POST", f"assistants/{assistant_id}", json=payload)
+    
+    headers = {"OpenAI-Beta": "assistants=v2"}
+    return self._request("POST", f"assistants/{assistant_id}", json=payload, headers=headers)
   
   def assistants_delete(self, assistant_id):
     """Delete an assistant."""
-    return self._request("DELETE", f"assistants/{assistant_id}")
+    headers = {"OpenAI-Beta": "assistants=v2"}
+    return self._request("DELETE", f"assistants/{assistant_id}", headers=headers)
   
   def assistants_list(self, limit=20):
     """List assistants."""
-    return self._request("GET", "assistants", params={"limit": limit})
+    headers = {"OpenAI-Beta": "assistants=v2"}
+    return self._request("GET", "assistants", params={"limit": limit}, headers=headers)
