@@ -1,6 +1,6 @@
 [project]
 name = "dyphira"
-version = "0.2.0"
+version = "0.3.0"
 authors = [
   { name="DivinerX", email="loc_yan@outlook.com" },
 ]
@@ -21,5 +21,5 @@ Homepage = "https://github.com/DivinerX/dyphira-python"
 Issues = "https://github.com/DivinerX/dyphira-python/issues"
 
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0", "wheel", "build"]
 build-backend = "setuptools.build_meta"

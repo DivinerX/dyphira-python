@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: dyphira
-Version: 0.2.0
+Version: 0.3.0
 Summary: A Python package for interacting with OpenAI and runpod APIs via Dyphira proxy server.
 Author-email: DivinerX <loc_yan@outlook.com>
 License: MIT
